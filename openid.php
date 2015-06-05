@@ -1,5 +1,4 @@
 <?php                                                                                                                                                                                                                                             
-define('CLIENTID','');                                                                                                                                                                                        
 if ( session_id() === '' ) session_start();                                                                                                                                                                                                       
 class OpenIDException extends \Exception {}                                                                                                                                                                                                       
                                                                                                                                                                                                                                                   
@@ -10,6 +9,9 @@ class OpenID {
         private $id_body = null;                                                                                                                                                                                                                  
         // handle metadata and POST login data handling for login                                                                                                                                                                                 
         public function __construct($domain,$redirect_url=null) {                                                                                                                                                                                 
+        	if ( ! defined('CLIENTID') ) {
+        		throw new OpenIDException('no CLIENTID defined');
+        	}
                 if ( $redirect_url == null ) {
                         $redirect_url = (isset($_SERVER['HTTPS'])?'https':'http').'://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
                 }
