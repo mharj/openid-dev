@@ -1,2 +1,2 @@
 # openid-dev
-OpenID hack
+OpenID quick and dirty implementation
