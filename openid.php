@@ -44,9 +44,8 @@ class OpenID {
         // check if user is still logged
         public function isLogged() {
                 if ( $this->id_body != null && time() > $this->id_body->exp ) {
-
+					return true;
                 }
-                return ($this->id_body == null?false:true);
                 return false;
         }
         // read id_body attribute
