@@ -52,7 +52,7 @@ class OpenID {
 	}
 	// check if user is still logged
 	public function isLogged() {
-		if ( isset($_SESSION['__OPENID_EMAIL']) ) {
+		if ( isset($_SESSION['__OPENID_PAYLOAD']) ) {
 			return true;
 		}
 		return false;
