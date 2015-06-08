@@ -80,7 +80,7 @@ class OpenIDConfig {
 	}
 	
 	public function setHttpProxy($http_proxy) {
-		$this->http_proxy = $proxy;
+		$this->http_proxy = $http_proxy;
 	}
 	
 	public function getHttpProxy() {
