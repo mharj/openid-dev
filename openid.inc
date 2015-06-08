@@ -81,8 +81,22 @@ class OpenID {
 		return $return;                                                                                                                                                                                                                                              
 	}
 
-	public function getToken($code) {
-#		$headers=array('Authorization: Basic '.$this->openIdConfig->getClientSecret());
-#		$URL=$this->oid_config->token_endpoint
+	public function validateToken(OpenIDToken $token) {
+		// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
+		// TODO
+		// 2. Verify that the value of aud in the ID token is equal to your app’s client ID.
+		if ( $this->openIdConfig->getClientId() != $token->payload->aud ) {
+			throw new OpenIDException("Can't validate token");
+		}
+		// 3. Verify that the value of iss in the ID token is equal to source
+		// TODO check match with config
+		// 4. Verify that the expiry time (exp) of the ID token has not passed.
+		if ( time() > $token->payload->exp ) {
+			throw new OpenIDException("Can't validate token");
+		}
+		// check nonce is matching
+		if ( $token->payload->nonce != $_SESSION['__OPENID_NONCE'] ) {
+			throw new OpenIDException("Can't validate token");
+		}
 	}
 }                                                                                                                                                                                                                                                                            
