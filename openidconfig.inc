@@ -1,6 +1,6 @@
 <?php
 namespace openid;
-class OpenIDConfig implements \JsonSerializable {
+class OpenIDConfig {
 	const RESP_CODE='code';
 	const RESP_TOKEN='token';
 	const RESP_ID_TOKEN='id_token';
@@ -76,10 +76,6 @@ class OpenIDConfig implements \JsonSerializable {
 	}
 	public function getClientSecret() {
 		return $this->clientSecret;
-	}
-
-	public function jsonSerialize() {
-		return $this;
 	}
 
 }
