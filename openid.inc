@@ -50,10 +50,13 @@ class OpenID {
 		header('Location: '.$URL);
 		exit;
 	}
-	// check if user is still logged
+	// check if user is still logged and session is not expired
 	public function isLogged() {
 		if ( isset($_SESSION['__OPENID_PAYLOAD']) ) {
-			return true;
+			$this->id_body = json_decode($_SESSION['__OPENID_PAYLOAD']);
+			if ( time() < $this->id_body->exp ) {
+				return true;
+			}
 		}
 		return false;
 	}
