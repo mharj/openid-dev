@@ -82,6 +82,7 @@ class OpenID {
 	}
 
 	public function validateToken(OpenIDToken $token) {
+		$this->getMetadata();
 		// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
 		// TODO
 		// 2. Verify that the value of aud in the ID token is equal to your app’s client ID.
@@ -89,7 +90,9 @@ class OpenID {
 			throw new OpenIDException("Can't validate token");
 		}
 		// 3. Verify that the value of iss in the ID token is equal to source
-		// TODO check match with config
+		if ( $this->oid_config->issuer != $token->payload->iss ) {
+			throw new OpenIDException("Can't validate token");
+		}
 		// 4. Verify that the expiry time (exp) of the ID token has not passed.
 		if ( time() > $token->payload->exp ) {
 			throw new OpenIDException("Can't validate token");
@@ -98,5 +101,10 @@ class OpenID {
 		if ( $token->payload->nonce != $_SESSION['__OPENID_NONCE'] ) {
 			throw new OpenIDException("Can't validate token");
 		}
+		// store payload to session
+		$_SESSION['__OPENID_PAYLOAD']=json_encode($token->payload);
+		// redirect to original page
+		header("Location: ". $_SESSION['__OPENID_REDIRECT']."\n");
+		exit;
 	}
 }                                                                                                                                                                                                                                                                            
