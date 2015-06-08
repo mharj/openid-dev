@@ -68,8 +68,8 @@ class OpenID {
 		if ( $header != null ) {
 			curl_setopt($ch, CURLOPT_HTTPHEADER,$header);
 		}
-		if ( $openIdConfig->getHttpProxy() != null ) {
-			curl_setopt($process, CURLOPT_PROXY, $openIdConfig->getHttpProxy() );
+		if ( $this->openIdConfig->getHttpProxy() != null ) {
+			curl_setopt($process, CURLOPT_PROXY, $this->openIdConfig->getHttpProxy() );
 		}
 		curl_setopt($process, CURLOPT_TIMEOUT, 10);
 		curl_setopt($process, CURLOPT_FAILONERROR,true);
