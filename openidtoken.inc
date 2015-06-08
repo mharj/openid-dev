@@ -1,7 +1,7 @@
 <?php
 namespace openid;
 
-class OpenIDToken implements \JsonSerializable {
+class OpenIDToken {
 	public $header = null;
 	public $payload = null;
 	public $signature = null;
@@ -14,7 +14,4 @@ class OpenIDToken implements \JsonSerializable {
 		}
 	}
 
-	public function jsonSerialize() {
-		return $this;
-	}
 }
