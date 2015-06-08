@@ -24,6 +24,7 @@ class OpenIDConfig {
 	private $clientID;
 	private $clientSecret;
 	private $response_type;
+	private $http_proxy = null;
 	public function __construct($domain_uri,$redirect_uri=null,$clientID=null,$clientSecret=null,$response_type=OpenIDConfig::RESP_NONE) {
 		if ( $domain_uri == null ) {
 			throw New OpenIDException("empty meta uri");
@@ -77,5 +78,12 @@ class OpenIDConfig {
 	public function getClientSecret() {
 		return $this->clientSecret;
 	}
-
+	
+	public function setHttpProxy($http_proxy) {
+		$this->http_proxy = $proxy;
+	}
+	
+	public function getHttpProxy() {
+		return $this->http_proxy;
+	}
 }
