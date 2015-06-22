@@ -6,7 +6,7 @@ class OpenID {
 	private $oid_config = null;
 	private $id_body = null;
 	private $code = null;
-                                                                                                                                                                         
+
 	public function __construct(OpenIDConfig $openIdConfig) {
 		if (  $openIdConfig == null ) {
 			throw new OpenIDException("empty config!");
@@ -82,19 +82,28 @@ class OpenID {
 		$return = curl_exec($process);
 		if( $return === false ) {
 			throw new OpenIDException(curl_error($process));
-		}                                                                                                                                                                                                                                                            
-		curl_close($process);                                                                                                                                                                                                                                        
-		return $return;                                                                                                                                                                                                                                              
+		}
+		curl_close($process);
+		return $return;
 	}
+	
 	/**
 	 * get all certificates for kid's
 	 * @return type kid array of cert PEM's
 	 */
 	private function getFederatedSignOnCerts() {
-		# v3 cert modulus expo
-		#$certInfo = json_decode($this->curlLoader($this->oid_config->jwks_uri));
-		#$certList = $this->certPemList($certInfo);
-		return json_decode($this->curlLoader('https://www.googleapis.com/oauth2/v1/certs'));
+		$certList = array();
+		$certJson = json_decode($this->curlLoader($this->oid_config->jwks_uri));
+		foreach ( $certJson->keys AS $certItem ) {
+			if ( isset($certItem->x5c) ) {
+				$certList[$certItem->kid]="-----BEGIN CERTIFICATE-----\n".chunk_split($certItem->x5c[0],64,"\n")."-----END CERTIFICATE-----\n";
+			}
+		}
+		// temporary google hack
+		if ( empty($certList) && $this->openIdConfig->getDomainUri() == 'https://accounts.google.com/' ) {
+			$certList = json_decode($this->curlLoader('https://www.googleapis.com/oauth2/v1/certs'));
+		}
+		return $certList;	
 	}
 	
 	public function validateToken(OpenIDToken $token) {
@@ -132,4 +141,4 @@ class OpenID {
 		header("Location: ". $_SESSION['__OPENID_REDIRECT']."\n");
 		exit;
 	}
-}                                                                                                                                                                                                                                                                            
+}
