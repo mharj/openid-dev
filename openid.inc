@@ -1,6 +1,6 @@
 <?php
 namespace openid;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+
 class OpenID {
 	private $openIdConfig = null;
 	private $oid_config = null;
@@ -50,6 +50,7 @@ class OpenID {
 		header('Location: '.$URL);
 		exit;
 	}
+	
 	// check if user is still logged and session is not expired
 	public function isLogged() {
 		if ( isset($_SESSION['__OPENID_PAYLOAD']) ) {
@@ -60,10 +61,12 @@ class OpenID {
 		}
 		return false;
 	}
+	
 	// read id_body attribute
 	public function getAttribute($attr) {
 		return $this->id_body->$attr;
 	}
+	
 	// curl wrapper
 	private function curlLoader($url,array $header=null) {
 		$process = curl_init($url); 
@@ -83,11 +86,30 @@ class OpenID {
 		curl_close($process);                                                                                                                                                                                                                                        
 		return $return;                                                                                                                                                                                                                                              
 	}
-
+	/**
+	 * get all certificates for kid's
+	 * @return type kid array of cert PEM's
+	 */
+	private function getFederatedSignOnCerts() {
+		# v3 cert modulus expo
+		#$certInfo = json_decode($this->curlLoader($this->oid_config->jwks_uri));
+		#$certList = $this->certPemList($certInfo);
+		return json_decode($this->curlLoader('https://www.googleapis.com/oauth2/v1/certs'));
+	}
+	
 	public function validateToken(OpenIDToken $token) {
-		$this->getMetadata();
+		$this->getMetadata(); // ensure we have metadata
+		$certList = $this->getFederatedSignOnCerts();
 		// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
-		// TODO
+		$certVerified = false;
+		if ( isset($certList[$token->header->kid]) ) { // check kid key form cert array
+			$cert = new OpenIDCert($certList[$token->header->kid]);
+			$certVerified = $cert->verify( $token->getSignedData() , $token->getSignature() );
+			unset($cert);
+		}
+		if ( $certVerified == false ) {
+			throw new OpenIDException("Can't validate token");
+		}
 		// 2. Verify that the value of aud in the ID token is equal to your app’s client ID.
 		if ( $this->openIdConfig->getClientId() != $token->payload->aud ) {
 			throw new OpenIDException("Can't validate token");
