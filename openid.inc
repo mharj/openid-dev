@@ -101,7 +101,7 @@ class OpenID {
 		}
 		// temporary google hack
 		if ( empty($certList) && $this->openIdConfig->getDomainUri() == 'https://accounts.google.com/' ) {
-			$certList = json_decode($this->curlLoader('https://www.googleapis.com/oauth2/v1/certs'));
+			$certList = json_decode($this->curlLoader('https://www.googleapis.com/oauth2/v1/certs'),true);
 		}
 		return $certList;	
 	}
