@@ -72,7 +72,7 @@ class OpenID {
 		$process = curl_init($url); 
 		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
 		if ( $header != null ) {
-			curl_setopt($ch, CURLOPT_HTTPHEADER,$header);
+			curl_setopt($process, CURLOPT_HTTPHEADER,$header);
 		}
 		if ( $this->openIdConfig->getHttpProxy() != null ) {
 			curl_setopt($process, CURLOPT_PROXY, $this->openIdConfig->getHttpProxy() );
@@ -96,7 +96,7 @@ class OpenID {
 		$certJson = json_decode($this->curlLoader($this->oid_config->jwks_uri));
 		foreach ( $certJson->keys AS $certItem ) {
 			if ( isset($certItem->x5c) ) {
-				$certList[$certItem->kid]="-----BEGIN CERTIFICATE-----\n".chunk_split($certItem->x5c[0],64,"\n")."-----END CERTIFICATE-----\n";
+				$certList[$certItem->kid] = "-----BEGIN CERTIFICATE-----\n".chunk_split($certItem->x5c[0],64,"\n")."-----END CERTIFICATE-----\n";
 			}
 		}
 		// temporary google hack
@@ -108,8 +108,29 @@ class OpenID {
 	
 	public function validateToken(OpenIDToken $token) {
 		$this->getMetadata(); // ensure we have metadata
+		try {
+			// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
+			$this->validateTokenSignature($token);
+			// 2. Verify that the value of aud in the ID token is equal to your app’s client ID.
+			$this->validateTokenClientID($token);
+			// 3. Verify that the value of iss in the ID token is equal to source
+			$this->validateTokenIssuer($token);
+			// 4. Verify that the expiry time (exp) of the ID token has not passed.
+			$this->validateTokenExpiry($token);
+			// 5. Check Nonce matching
+			$this->validateTokenNonce($token);
+			// store payload to session
+			$_SESSION['__OPENID_PAYLOAD'] = json_encode($token->payload);
+			// redirect to original page
+			header("Location: ". $_SESSION['__OPENID_REDIRECT']."\n");
+			exit;
+		} catch ( OpenIDException $ex ) {
+			throw $ex;
+		}
+	}
+	
+	private function validateTokenSignature(OpenIDToken $token) {
 		$certList = $this->getFederatedSignOnCerts();
-		// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
 		$certVerified = false;
 		if ( isset($certList[$token->header->kid]) ) { // check kid key form cert array
 			$cert = new OpenIDCert($certList[$token->header->kid]);
@@ -119,26 +140,28 @@ class OpenID {
 		if ( $certVerified == false ) {
 			throw new OpenIDException("Can't validate token");
 		}
-		// 2. Verify that the value of aud in the ID token is equal to your app’s client ID.
+	}
+	
+	private function validateTokenClientID(OpenIDToken $token) {
 		if ( $this->openIdConfig->getClientId() != $token->payload->aud ) {
 			throw new OpenIDException("Can't validate token");
 		}
-		// 3. Verify that the value of iss in the ID token is equal to source
+	}
+	
+	private function validateTokenIssuer(OpenIDToken $token) {
 		if ( $this->oid_config->issuer != $token->payload->iss ) {
 			throw new OpenIDException("Can't validate token");
 		}
-		// 4. Verify that the expiry time (exp) of the ID token has not passed.
+	}
+	
+	private function validateTokenExpiry(OpenIDToken $token) {
 		if ( time() > $token->payload->exp ) {
 			throw new OpenIDException("Can't validate token");
 		}
-		// check nonce is matching
+	}
+	private function validateTokenNonce(OpenIDToken $token) {
 		if ( $token->payload->nonce != $_SESSION['__OPENID_NONCE'] ) {
 			throw new OpenIDException("Can't validate token");
 		}
-		// store payload to session
-		$_SESSION['__OPENID_PAYLOAD']=json_encode($token->payload);
-		// redirect to original page
-		header("Location: ". $_SESSION['__OPENID_REDIRECT']."\n");
-		exit;
-	}
+	}	
 }
