@@ -35,7 +35,7 @@ class OpenID {
 	
 	// auth redirect to service
 	public function doAuth() {
-		$_SESSION['__OPENID_NONCE']=md5(session_id().time());
+		$_SESSION['__OPENID_NONCE'] = OpenIDNonce::makeNonce();
 		$data=array("openid","email");
 		$params = array(
 			"response_type"	=> $this->openIdConfig->getResponseType(),
@@ -117,7 +117,7 @@ class OpenID {
 			$this->validateTokenIssuer($token);
 			// 4. Verify that the expiry time (exp) of the ID token has not passed.
 			$this->validateTokenExpiry($token);
-			// 5. Check Nonce matching
+			// 5. Check Nonce time stamp
 			$this->validateTokenNonce($token);
 			// store payload to session
 			$_SESSION['__OPENID_PAYLOAD'] = json_encode($token->payload);
@@ -160,7 +160,7 @@ class OpenID {
 		}
 	}
 	private function validateTokenNonce(OpenIDToken $token) {
-		if ( $token->payload->nonce != $_SESSION['__OPENID_NONCE'] ) {
+		if ( ! OpenIDNonce::checkTimestamp($token->payload->nonce) ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}	
