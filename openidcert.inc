@@ -10,14 +10,17 @@ use \Math_BigInteger;
 class OpenIDCert {
 	private $publicKey=null;
 	function __construct($data) {
+		OpenIDLog::debug(__METHOD__);
 		$this->publicKey = openssl_x509_read($data);
 	}
 	function __destruct() {
+		OpenIDLog::debug(__METHOD__);
 		if ( $this->publicKey === null ) {
 			openssl_x509_free($this->publicKey);
 		}
 	}
 	function verify($data, $signature) {
+		OpenIDLog::debug(__METHOD__);
 		$status = openssl_verify($data, $signature, $this->publicKey, "sha256");
 		if ($status === -1) {
 			throw new OpenIDException('Signature verification error: ' . openssl_error_string());
@@ -32,6 +35,7 @@ class OpenIDCert {
 	 * @return string PEM
 	 */
 	public static function certPemList($certJson) {
+		OpenIDLog::debug(__METHOD__);
 		$ret = array();
 		foreach ( $certJson->keys AS $k => $v ) {
 			$rsa = new Crypt_RSA();
@@ -45,6 +49,7 @@ class OpenIDCert {
 	}
 	
 	private static function urlSafeB64Decode($b64) {
+		OpenIDLog::debug(__METHOD__);
 		$b64 = str_replace(array('-', '_'),array('+', '/'),$b64);
 		return base64_decode($b64);
 	}

@@ -1,6 +1,6 @@
 <?php
 namespace openid;
-
+use debug\Logger;
 class OpenID {
 	private $openIdConfig = null;
 	private $oid_config = null;
@@ -8,6 +8,7 @@ class OpenID {
 	private $code = null;
 
 	public function __construct(OpenIDConfig $openIdConfig) {
+		OpenIDLog::debug(__METHOD__);
 		if (  $openIdConfig == null ) {
 			throw new OpenIDException("empty config!");
 		}
@@ -24,6 +25,7 @@ class OpenID {
 
 	// store OpenID connection configuration to session, so only need to use this when new session happens
 	public function getMetadata() {
+		OpenIDLog::debug(__METHOD__."()");
 		if ( ! isset($_SESSION['__OPENID_CONFIG_METADATA'] ) ) {
 			$_SESSION['__OPENID_CONFIG_METADATA']=$this->curlLoader( $this->openIdConfig->getDomainConfigurationUri() );
 		}
@@ -35,6 +37,7 @@ class OpenID {
 	
 	// auth redirect to service
 	public function doAuth() {
+		OpenIDLog::debug(__METHOD__."()");
 		$_SESSION['__OPENID_NONCE'] = OpenIDNonce::makeNonce();
 		$data=array("openid","email");
 		$params = array(
@@ -50,25 +53,89 @@ class OpenID {
 		header('Location: '.$URL);
 		exit;
 	}
+
+	public function requestServiceToken($service) {
+		OpenIDLog::debug(__METHOD__."('".$service."')");
+		if ( $service == null ) {
+			throw new \Exception("Not service URL found!");
+		}
+		$data = array(
+			'grant_type'	=> 'authorization_code',
+			'code'			=> $_SESSION['__OPENID_CODE'],
+			'resource'		=> $service,
+			'redirect_uri'	=> $this->openIdConfig->getRedirectUri(),
+			'client_id'		=> $this->openIdConfig->getClientId(),
+			'client_secret'	=> $this->openIdConfig->getClientSecret(),
+		);
+		$data = json_decode($this->curlLoader( $this->oid_config->token_endpoint,null,$data));
+		if ( isset($data->error) ) {
+			throw new \Exception($data->error_description);	
+		}
+		return $data;
+	}
+	
+	public function getService($className) {
+		OpenIDLog::debug(__METHOD__."('".$className."')");
+		if ( ! isset($_SESSION['__OPENID_CODE']) ) {
+			throw new \Exception("No OpenID code token.");
+		}
+		if( class_exists($className) ){
+			$instance = $className::getInstance($_SESSION['__OPENID_CODE'],$this->openIdConfig);
+			if ( $instance instanceof OpenIDService ) {
+				if ( $instance->haveTokens() === false ) {
+					$tokens = null;
+					if ( isset($_SESSION['__OPENID_CODE_'.$className]) ) {
+						$tokens = json_decode($_SESSION['__OPENID_CODE_'.$className]);
+						Logger::log("read service token from cache (valid: ".($tokens->expires_on-time() )." sec)");
+						if ( time() > $tokens->expires_on ) { // tokens expired
+							$tokens = null;
+						}
+					} 
+					if ( $tokens == null ) {					
+						Logger::log("request service token");
+						$tokens = $this->requestServiceToken($instance::SERVICE_URI);
+						$_SESSION['__OPENID_CODE_'.$className] = json_encode($tokens);
+					}
+					$instance->setTokens( $tokens );
+				}
+				return $instance;
+			}
+			throw new \Exception("Not instance of OpenIDService");
+		} else {
+			throw new \Exception("Invalid service type given.");
+		}
+	}
+	
+	public function setCode($code) {
+		OpenIDLog::debug(__METHOD__."('".(strlen($code)>40?substr($code,0,37).'...':$code)."')");
+		$this->code = $code;
+		$_SESSION['__OPENID_CODE'] = $this->code;
+	}
 	
 	// check if user is still logged and session is not expired
 	public function isLogged() {
+		Logger::log(__METHOD__);
 		if ( isset($_SESSION['__OPENID_PAYLOAD']) ) {
 			$this->id_body = json_decode($_SESSION['__OPENID_PAYLOAD']);
 			if ( time() < $this->id_body->exp ) {
 				return true;
 			}
 		}
+		if ( isset($_SESSION['__OPENID_CODE']) ) {
+			$this->code = $_SESSION['__OPENID_CODE'];
+		}
 		return false;
 	}
 	
 	// read id_body attribute
 	public function getAttribute($attr) {
+		OpenIDLog::debug(__METHOD__."('".$attr."')");
 		return $this->id_body->$attr;
 	}
 	
 	// curl wrapper
-	private function curlLoader($url,array $header=null) {
+	private function curlLoader($url,array $header=null,array $post=null) {
+		OpenIDLog::debug(__METHOD__."('".$url."')");
 		$process = curl_init($url); 
 		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
 		if ( $header != null ) {
@@ -77,8 +144,12 @@ class OpenID {
 		if ( $this->openIdConfig->getHttpProxy() != null ) {
 			curl_setopt($process, CURLOPT_PROXY, $this->openIdConfig->getHttpProxy() );
 		}
+		if ( $post != null ) {
+			curl_setopt($process, CURLOPT_POST, 1);
+			curl_setopt($process, CURLOPT_POSTFIELDS, http_build_query($post) );
+		}
 		curl_setopt($process, CURLOPT_TIMEOUT, 10);
-		curl_setopt($process, CURLOPT_FAILONERROR,true);
+		curl_setopt($process, CURLOPT_FAILONERROR,false);
 		$return = curl_exec($process);
 		if( $return === false ) {
 			throw new OpenIDException(curl_error($process));
@@ -92,6 +163,7 @@ class OpenID {
 	 * @return type kid array of cert PEM's
 	 */
 	private function getFederatedSignOnCerts() {
+		OpenIDLog::debug(__METHOD__."()");
 		$certList = array();
 		$certJson = json_decode($this->curlLoader($this->oid_config->jwks_uri));
 		foreach ( $certJson->keys AS $certItem ) {
@@ -107,6 +179,7 @@ class OpenID {
 	}
 	
 	public function validateToken(OpenIDToken $token) {
+		OpenIDLog::debug(__METHOD__."()");
 		$this->getMetadata(); // ensure we have metadata
 		try {
 			// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
@@ -130,6 +203,7 @@ class OpenID {
 	}
 	
 	private function validateTokenSignature(OpenIDToken $token) {
+		OpenIDLog::debug(__METHOD__."()");
 		$certList = $this->getFederatedSignOnCerts();
 		$certVerified = false;
 		if ( isset($certList[$token->header->kid]) ) { // check kid key form cert array
@@ -143,23 +217,27 @@ class OpenID {
 	}
 	
 	private function validateTokenClientID(OpenIDToken $token) {
+		OpenIDLog::debug(__METHOD__."()");
 		if ( $this->openIdConfig->getClientId() != $token->payload->aud ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	
 	private function validateTokenIssuer(OpenIDToken $token) {
+		Logger::log(__METHOD__."()");
 		if ( $this->oid_config->issuer != $token->payload->iss ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	
 	private function validateTokenExpiry(OpenIDToken $token) {
+		Logger::log(__METHOD__."()");
 		if ( time() > $token->payload->exp ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	private function validateTokenNonce(OpenIDToken $token) {
+		Logger::log(__METHOD__."()");
 		if ( ! OpenIDNonce::checkTimestamp($token->payload->nonce) ) {
 			throw new OpenIDException("Can't validate token");
 		}

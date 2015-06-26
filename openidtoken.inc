@@ -7,6 +7,7 @@ class OpenIDToken {
 	public $signature = null;
 	public $signedData = null;
 	public function __construct($tokenString=null) {
+		OpenIDLog::debug(__METHOD__);
 		if ( $tokenString != null ) {
 			$token_data  = explode(".",$tokenString);
 			$this->header = json_decode(base64_decode($token_data[0]));
@@ -16,14 +17,17 @@ class OpenIDToken {
 		}
 	}
 	public function getSignature() {
+		OpenIDLog::debug(__METHOD__);
 		return $this->signature;
 	}
 	
 	public function getSignedData() {
+		OpenIDLog::debug(__METHOD__);
 		return $this->signedData;
 	}
 	
     private static function urlsafeB64Decode($input) {
+    	OpenIDLog::debug(__METHOD__);
         $remainder = strlen($input) % 4;
         if ($remainder) {
             $padlen = 4 - $remainder;
