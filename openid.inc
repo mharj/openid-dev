@@ -1,6 +1,6 @@
 <?php
 namespace openid;
-use debug\Logger;
+
 class OpenID {
 	private $openIdConfig = null;
 	private $oid_config = null;
@@ -86,13 +86,13 @@ class OpenID {
 					$tokens = null;
 					if ( isset($_SESSION['__OPENID_CODE_'.$className]) ) {
 						$tokens = json_decode($_SESSION['__OPENID_CODE_'.$className]);
-						Logger::log("read service token from cache (valid: ".($tokens->expires_on-time() )." sec)");
+						OpenIDLog::debug("read service token from cache (valid: ".($tokens->expires_on-time() )." sec)");
 						if ( time() > $tokens->expires_on ) { // tokens expired
 							$tokens = null;
 						}
 					} 
 					if ( $tokens == null ) {					
-						Logger::log("request service token");
+						OpenIDLog::debug("request service token");
 						$tokens = $this->requestServiceToken($instance::SERVICE_URI);
 						$_SESSION['__OPENID_CODE_'.$className] = json_encode($tokens);
 					}
@@ -114,7 +114,7 @@ class OpenID {
 	
 	// check if user is still logged and session is not expired
 	public function isLogged() {
-		Logger::log(__METHOD__);
+		OpenIDLog::debug(__METHOD__);
 		if ( isset($_SESSION['__OPENID_PAYLOAD']) ) {
 			$this->id_body = json_decode($_SESSION['__OPENID_PAYLOAD']);
 			if ( time() < $this->id_body->exp ) {
@@ -224,20 +224,20 @@ class OpenID {
 	}
 	
 	private function validateTokenIssuer(OpenIDToken $token) {
-		Logger::log(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__."()");
 		if ( $this->oid_config->issuer != $token->payload->iss ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	
 	private function validateTokenExpiry(OpenIDToken $token) {
-		Logger::log(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__."()");
 		if ( time() > $token->payload->exp ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	private function validateTokenNonce(OpenIDToken $token) {
-		Logger::log(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__."()");
 		if ( ! OpenIDNonce::checkTimestamp($token->payload->nonce) ) {
 			throw new OpenIDException("Can't validate token");
 		}
