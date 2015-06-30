@@ -36,14 +36,13 @@ class OpenID {
 	}
 	
 	// auth redirect to service
-	public function doAuth() {
+	public function doAuth($scope) {
 		OpenIDLog::debug(__METHOD__."()");
 		$_SESSION['__OPENID_NONCE'] = OpenIDNonce::makeNonce();
-		$data=array("openid","email");
 		$params = array(
 			"response_type"	=> $this->openIdConfig->getResponseType(),
 			"client_id"		=> $this->openIdConfig->getClientId(),
-			"scope"			=> implode(" ",$data),
+			"scope"			=> implode(" ",$scope),
 			"nonce"			=> $_SESSION['__OPENID_NONCE'],
 			"response_mode"	=> "form_post",
 			"redirect_uri"	=> $this->openIdConfig->getRedirectUri(),
@@ -54,7 +53,7 @@ class OpenID {
 		exit;
 	}
 
-	public function requestServiceToken($service) {
+	public function requestServiceToken($service,$scopeList) {
 		OpenIDLog::debug(__METHOD__."('".$service."')");
 		if ( $service == null ) {
 			throw new \Exception("Not service URL found!");
@@ -63,18 +62,19 @@ class OpenID {
 			'grant_type'	=> 'authorization_code',
 			'code'			=> $_SESSION['__OPENID_CODE'],
 			'resource'		=> $service,
+			'scope'			=> implode(" ",$scopeList),
 			'redirect_uri'	=> $this->openIdConfig->getRedirectUri(),
 			'client_id'		=> $this->openIdConfig->getClientId(),
 			'client_secret'	=> $this->openIdConfig->getClientSecret(),
 		);
-		$data = json_decode($this->curlLoader( $this->oid_config->token_endpoint,null,$data));
+		$data = json_decode($this->curlLoader( $this->oid_config->token_endpoint,array('Content-Type: application/x-www-form-urlencoded'),$data));
 		if ( isset($data->error) ) {
-			throw new \Exception($data->error_description);	
+			throw new \Exception(json_encode($data->error_description));	
 		}
 		return $data;
 	}
 	
-	public function getService($className) {
+	public function getService($className,$scopeList) {
 		OpenIDLog::debug(__METHOD__."('".$className."')");
 		if ( ! isset($_SESSION['__OPENID_CODE']) ) {
 			throw new \Exception("No OpenID code token.");
@@ -93,7 +93,7 @@ class OpenID {
 					} 
 					if ( $tokens == null ) {					
 						OpenIDLog::debug("request service token");
-						$tokens = $this->requestServiceToken($instance::SERVICE_URI);
+						$tokens = $this->requestServiceToken($instance::SERVICE_URI,$scopeList);
 						$_SESSION['__OPENID_CODE_'.$className] = json_encode($tokens);
 					}
 					$instance->setTokens( $tokens );
@@ -114,15 +114,15 @@ class OpenID {
 	
 	// check if user is still logged and session is not expired
 	public function isLogged() {
-		OpenIDLog::debug(__METHOD__);
+		OpenIDLog::debug(__METHOD__.(isset($_SESSION['__OPENID_PAYLOAD'])?$_SESSION['__OPENID_PAYLOAD']:""));
+		if ( isset($_SESSION['__OPENID_CODE']) ) {
+			$this->code = $_SESSION['__OPENID_CODE'];
+		}		
 		if ( isset($_SESSION['__OPENID_PAYLOAD']) ) {
 			$this->id_body = json_decode($_SESSION['__OPENID_PAYLOAD']);
 			if ( time() < $this->id_body->exp ) {
 				return true;
 			}
-		}
-		if ( isset($_SESSION['__OPENID_CODE']) ) {
-			$this->code = $_SESSION['__OPENID_CODE'];
 		}
 		return false;
 	}
@@ -135,15 +135,13 @@ class OpenID {
 	
 	// curl wrapper
 	private function curlLoader($url,array $header=null,array $post=null) {
-		OpenIDLog::debug(__METHOD__."('".$url."')");
+		OpenIDLog::debug(__METHOD__."('".$url."',HEADER:".json_encode($header).",POST:".json_encode($post).")");
 		$process = curl_init($url); 
 		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
 		if ( $header != null ) {
 			curl_setopt($process, CURLOPT_HTTPHEADER,$header);
 		}
-		if ( $this->openIdConfig->getHttpProxy() != null ) {
-			curl_setopt($process, CURLOPT_PROXY, $this->openIdConfig->getHttpProxy() );
-		}
+		curl_setopt($process, CURLOPT_PROXY, $this->openIdConfig->getHttpProxy() );
 		if ( $post != null ) {
 			curl_setopt($process, CURLOPT_POST, 1);
 			curl_setopt($process, CURLOPT_POSTFIELDS, http_build_query($post) );

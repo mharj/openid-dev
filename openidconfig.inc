@@ -63,7 +63,7 @@ class OpenIDConfig {
 	
 	
 	public function getDomainConfigurationUri() {
-		OpenIDLog::debug(__METHOD__);
+		OpenIDLog::debug(__METHOD__." = ".$this->domain_uri.'/.well-known/openid-configuration');
 		return $this->domain_uri.'/.well-known/openid-configuration';
 	}
 	
@@ -73,7 +73,7 @@ class OpenIDConfig {
 	}
 	
 	public function getRedirectUri() {
-		OpenIDLog::debug(__METHOD__);
+		OpenIDLog::debug(__METHOD__." = ".$this->redirect_uri);
 		return $this->redirect_uri;
 	}
 	
@@ -82,7 +82,7 @@ class OpenIDConfig {
 		$this->clientID = $clientID;
 	}
 	public function getClientId() {
-		OpenIDLog::debug(__METHOD__);
+		OpenIDLog::debug(__METHOD__." = ".$this->clientID);
 		return $this->clientID;
 	}
 	
@@ -101,7 +101,7 @@ class OpenIDConfig {
 	}
 	
 	public function getHttpProxy() {
-		OpenIDLog::debug(__METHOD__);
+		OpenIDLog::debug(__METHOD__." = ".$this->http_proxy);
 		return $this->http_proxy;
 	}
 }
