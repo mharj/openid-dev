@@ -2,6 +2,6 @@
 namespace openid;
 
 class OpenIDNullLogger implements OpenIDLogInterface {
-	public function debug($msg) {}
-	public function error($msg) {}
+	public function debug($msg,$object) {}
+	public function error($msg,$object) {}
 }
