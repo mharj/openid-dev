@@ -37,7 +37,7 @@ class OpenID {
 	
 	// auth redirect to service
 	public function doAuth($scope) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,array('scope'=>$scope));
 		$_SESSION['__OPENID_NONCE'] = OpenIDNonce::makeNonce();
 		$params = array(
 			"response_type"	=> $this->openIdConfig->getResponseType(),
@@ -54,7 +54,7 @@ class OpenID {
 	}
 
 	public function requestServiceToken($service,$scopeList) {
-		OpenIDLog::debug(__METHOD__."('".$service."')");
+		OpenIDLog::debug(__METHOD__,array('service'=>$service,'scope'=>$scopeList));
 		if ( $service == null ) {
 			throw new \Exception("Not service URL found!");
 		}
@@ -69,13 +69,13 @@ class OpenID {
 		);
 		$data = json_decode($this->curlLoader( $this->oid_config->token_endpoint,array('Content-Type: application/x-www-form-urlencoded'),$data));
 		if ( isset($data->error) ) {
-			throw new \Exception(json_encode($data->error_description));	
+			throw new OpenIDException($data->error,explode("\n",$data->error_description));	
 		}
 		return $data;
 	}
 	
 	public function getService($className,$scopeList) {
-		OpenIDLog::debug(__METHOD__."('".$className."')");
+		OpenIDLog::debug(__METHOD__,array('serviceClass'=>$className,'scope'=>$scopeList));
 		if ( ! isset($_SESSION['__OPENID_CODE']) ) {
 			throw new \Exception("No OpenID code token.");
 		}
@@ -86,9 +86,11 @@ class OpenID {
 					$tokens = null;
 					if ( isset($_SESSION['__OPENID_CODE_'.$className]) ) {
 						$tokens = json_decode($_SESSION['__OPENID_CODE_'.$className]);
-						OpenIDLog::debug("read service token from cache (valid: ".($tokens->expires_on-time() )." sec)");
 						if ( time() > $tokens->expires_on ) { // tokens expired
+							OpenIDLog::debug("read service token from cache (expired)");
 							$tokens = null;
+						} else {
+							OpenIDLog::debug("read service token from cache (valid: ".($tokens->expires_on-time() )." sec)");
 						}
 					} 
 					if ( $tokens == null ) {					
@@ -107,14 +109,14 @@ class OpenID {
 	}
 	
 	public function setCode($code) {
-		OpenIDLog::debug(__METHOD__."('".(strlen($code)>40?substr($code,0,37).'...':$code)."')");
+		OpenIDLog::debug(__METHOD__,array('code'=>$code));
 		$this->code = $code;
 		$_SESSION['__OPENID_CODE'] = $this->code;
 	}
 	
 	// check if user is still logged and session is not expired
 	public function isLogged() {
-		OpenIDLog::debug(__METHOD__.(isset($_SESSION['__OPENID_PAYLOAD'])?$_SESSION['__OPENID_PAYLOAD']:""));
+		OpenIDLog::debug(__METHOD__,(isset($_SESSION['__OPENID_PAYLOAD'])?json_decode($_SESSION['__OPENID_PAYLOAD']):null));
 		if ( isset($_SESSION['__OPENID_CODE']) ) {
 			$this->code = $_SESSION['__OPENID_CODE'];
 		}		
@@ -134,8 +136,8 @@ class OpenID {
 	}
 	
 	// curl wrapper
-	private function curlLoader($url,array $header=null,array $post=null) {
-		OpenIDLog::debug(__METHOD__."('".$url."',HEADER:".json_encode($header).",POST:".json_encode($post).")");
+	private function curlLoader($url,array $header=null,array $post=null,$method=null) {
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		$process = curl_init($url); 
 		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
 		if ( $header != null ) {
@@ -161,7 +163,7 @@ class OpenID {
 	 * @return type kid array of cert PEM's
 	 */
 	private function getFederatedSignOnCerts() {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		$certList = array();
 		$certJson = json_decode($this->curlLoader($this->oid_config->jwks_uri));
 		foreach ( $certJson->keys AS $certItem ) {
@@ -177,7 +179,7 @@ class OpenID {
 	}
 	
 	public function validateToken(OpenIDToken $token) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		$this->getMetadata(); // ensure we have metadata
 		try {
 			// 1. Verify that the ID token is a JWT which is properly signed with an appropriate public key.
@@ -201,7 +203,7 @@ class OpenID {
 	}
 	
 	private function validateTokenSignature(OpenIDToken $token) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		$certList = $this->getFederatedSignOnCerts();
 		$certVerified = false;
 		if ( isset($certList[$token->header->kid]) ) { // check kid key form cert array
@@ -215,27 +217,27 @@ class OpenID {
 	}
 	
 	private function validateTokenClientID(OpenIDToken $token) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		if ( $this->openIdConfig->getClientId() != $token->payload->aud ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	
 	private function validateTokenIssuer(OpenIDToken $token) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		if ( $this->oid_config->issuer != $token->payload->iss ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	
 	private function validateTokenExpiry(OpenIDToken $token) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		if ( time() > $token->payload->exp ) {
 			throw new OpenIDException("Can't validate token");
 		}
 	}
 	private function validateTokenNonce(OpenIDToken $token) {
-		OpenIDLog::debug(__METHOD__."()");
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		if ( ! OpenIDNonce::checkTimestamp($token->payload->nonce) ) {
 			throw new OpenIDException("Can't validate token");
 		}

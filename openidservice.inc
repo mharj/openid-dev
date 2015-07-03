@@ -9,7 +9,7 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 	private $openIdConfig = null;
 	
 	protected function __construct($code,$openIdConfig) {
-		OpenIDLog::debug(get_called_class().'::__construct'."(code='".(strlen($code)>40?substr($code,0,37).'...':$code)."')");
+		OpenIDLog::debug(get_called_class().'::__construct',array("code"=>$code));
 		$this->code = $code;
 		$this->openIdConfig = $openIdConfig;
 	}
@@ -32,32 +32,39 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 	}
 	
 	public function setTokens($accessToken) {
-		OpenIDLog::debug(get_called_class().'::setTokens'."(".json_encode($accessToken).")");
+		OpenIDLog::debug(get_called_class().'::setTokens',$accessToken);
 		$this->accessToken = $accessToken;	
 	}
 	
-	protected function httpQuery($URL,array $headers) {
+	protected function httpQuery($URL,array $headers,$post,$method=null) {
 		OpenIDLog::debug(get_called_class().'::httpQuery'."('".$URL."')");
 		if ( $this->accessToken == null ) {
 				throw new OpenIDException("Missing access token!");
 		}
 		$headers[]='Authorization: '.$this->accessToken->token_type.' '.$this->accessToken->access_token;
-		$data = $this->curlLoader($URL,$headers);
+		$data = $this->curlLoader($URL,$headers,$post,$method);
 		return $data;
 	}
 	
 	// curl wrapper
-	private function curlLoader($url,array $header=null,array $post=null) {
-		OpenIDLog::debug(get_called_class().'::curlLoader'."('".$url."',HEADER:".json_encode($header).",POST:".json_encode($post).")");
+	private function curlLoader($url,array $header=null,$post=null,$method=null) {
+		OpenIDLog::debug(get_called_class().'::curlLoader',func_get_args());
 		$process = curl_init($url); 
 		curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
+		if ( $method != null ) {
+			curl_setopt($process, CURLOPT_CUSTOMREQUEST, $method);		
+		}
 		if ( $header != null ) {
 			curl_setopt($process, CURLOPT_HTTPHEADER,$header);
 		}
 		curl_setopt($process, CURLOPT_PROXY, $this->openIdConfig->getHttpProxy() );
 		if ( $post != null ) {
 			curl_setopt($process, CURLOPT_POST, 1);
-			curl_setopt($process, CURLOPT_POSTFIELDS, http_build_query($post) );
+			if ( is_array($post) ) {
+				curl_setopt($process, CURLOPT_POSTFIELDS, http_build_query($post) );
+			} else {
+				curl_setopt($process, CURLOPT_POSTFIELDS, $post);
+			}
 		}
 		curl_setopt($process, CURLOPT_TIMEOUT, 10);
 		curl_setopt($process, CURLOPT_FAILONERROR,false);
@@ -67,5 +74,11 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 			throw new OpenIDException(curl_error($process));
 		}
 		return $return;
-	}	
+	}
+	
+	protected function httpLoader(OpenIDHTTPRequest $req) {
+		OpenIDLog::debug(get_called_class().'::httpLoader',func_get_args());
+		$req->addHeader('Authorization: '.$this->accessToken->token_type.' '.$this->accessToken->access_token);
+		return $this->curlLoader( $req->getURL() , $req->getHeaders() , $req->getPayload() , $req->getMethod() );
+	}
 } 

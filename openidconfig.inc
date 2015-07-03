@@ -26,7 +26,7 @@ class OpenIDConfig {
 	private $response_type;
 	private $http_proxy = null;
 	public function __construct($domain_uri,$redirect_uri=null,$clientID=null,$clientSecret=null,$response_type=OpenIDConfig::RESP_NONE) {
-		OpenIDLog::debug(__METHOD__."('".$domain_uri."',".(is_null($redirect_uri)?"null":"'".$redirect_uri."'").",".(is_null($clientID)?"null":"'".$clientID."'").",".(is_null($clientSecret)?"null":"'...'").",".(is_null($response_type)?"null":"'".$response_type."'").")");
+		OpenIDLog::debug(__METHOD__,array('domain_uri'=>$domain_uri,'redirect_uri'=>(is_null($redirect_uri)?null:$redirect_uri),'client_id'=>(is_null($clientID)?null:$clientID),'client_secret'=>(is_null($clientSecret)?null:'...'),'response_type'=>(is_null($response_type)?null:$response_type)));
 		if ( $domain_uri == null ) {
 			throw New OpenIDException("empty meta uri");
 		}
@@ -41,7 +41,7 @@ class OpenIDConfig {
 	}
 	
 	public function setResponseType($response_type) {
-		OpenIDLog::debug(__METHOD__."('".$response_type."')");
+		OpenIDLog::debug(__METHOD__,$response_type);
 		if ( ! in_array($response_type,OpenIDConfig::$resp_types)) {
 			throw New OpenIDException("unknown response type '".$response_type."'");
 		}
@@ -57,7 +57,7 @@ class OpenIDConfig {
 		return $this->domain_uri;
 	}
 	public function setDomainUri($uri) {
-		OpenIDLog::debug(__METHOD__."('".$uri."')");
+		OpenIDLog::debug(__METHOD__,$uri);
 		$this->domain_uri = $uri;
 	}
 	
@@ -68,7 +68,7 @@ class OpenIDConfig {
 	}
 	
 	public function setRedirectUri($redirect_uri) {
-		OpenIDLog::debug(__METHOD__."('".$redirect_uri."')");
+		OpenIDLog::debug(__METHOD__,$redirect_uri);
 		$this->redirect_uri = $redirect_uri;
 	}
 	
@@ -78,7 +78,7 @@ class OpenIDConfig {
 	}
 	
 	public function setClientId($clientID) {
-		OpenIDLog::debug(__METHOD__."(".(is_null($clientID)?"null":"'".$clientID."'").")");
+		OpenIDLog::debug(__METHOD__,$clientID);
 		$this->clientID = $clientID;
 	}
 	public function getClientId() {
