@@ -7,6 +7,7 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 	private static $instance = array();
 	private $accessToken = null;
 	private $openIdConfig = null;
+	protected $validCert = true;
 	
 	protected function __construct($code,$openIdConfig) {
 		OpenIDLog::debug(get_called_class().'::__construct',array("code"=>$code));
@@ -24,6 +25,10 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 #        print_r(self::$instance);
 #		echo "</pre>";
         return self::$instance[$class];
+	}
+	
+	public function haveValidSSL($validCert=true) {
+		$this->validCert = $validCert;
 	}
 	
 	public function haveTokens() {
@@ -46,6 +51,10 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 		return $data;
 	}
 	
+	public function getBearer() {
+		return substr($this->accessToken->access_token,0,30)."...";
+	}
+	
 	// curl wrapper
 	private function curlLoader($url,array $header=null,$post=null,$method=null) {
 		OpenIDLog::debug(get_called_class().'::curlLoader',func_get_args());
@@ -66,13 +75,16 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 				curl_setopt($process, CURLOPT_POSTFIELDS, $post);
 			}
 		}
+		if ( $this->validCert == false ) {
+			curl_setopt($process, CURLOPT_SSL_VERIFYPEER, 0);
+		}
 		curl_setopt($process, CURLOPT_TIMEOUT, 10);
 		curl_setopt($process, CURLOPT_FAILONERROR,false);
 		$return = curl_exec($process);
-		curl_close($process);
 		if( $return === false ) {
 			throw new OpenIDException(curl_error($process));
 		}
+		curl_close($process);
 		return $return;
 	}
 	

@@ -60,7 +60,7 @@ class OpenID {
 	 * @throws OpenIDException
 	 */
 	public function requestServiceToServiceToken($service) {
-		OpenIDLog::debug(__METHOD__,array('service'=>$service,'scope'=>$scopeList));
+		OpenIDLog::debug(__METHOD__,func_get_args());
 		if ( $service == null ) {
 			throw new \Exception("Not service URL found!");
 		}
@@ -110,6 +110,40 @@ class OpenID {
 			'client_id'		=> $this->openIdConfig->getClientId(),
 		);		
 	}
+	
+	public function getServiceToService($className) {
+		OpenIDLog::debug(__METHOD__,func_get_args());
+		if ( ! isset($_SESSION['__OPENID_CODE']) ) {
+			throw new \Exception("No OpenID code token.");
+		}
+		if( class_exists($className) ){
+			$instance = $className::getInstance($_SESSION['__OPENID_CODE'],$this->openIdConfig);
+			if ( $instance instanceof OpenIDService ) {
+				if ( $instance->haveTokens() === false ) {
+					$tokens = null;
+					if ( isset($_SESSION['__OPENID_CODE_'.$className]) ) {
+						$tokens = json_decode($_SESSION['__OPENID_CODE_'.$className]);
+						if ( time() > $tokens->expires_on ) { // tokens expired
+							OpenIDLog::debug("read service token from cache (expired)");
+							$tokens = null;
+						} else {
+							OpenIDLog::debug("read service token from cache (valid: ".($tokens->expires_on-time() )." sec)");
+						}
+					} 
+					if ( $tokens == null ) {					
+						OpenIDLog::debug("request service token");
+						$tokens = $this->requestServiceToServiceToken($instance::SERVICE_URI);
+						$_SESSION['__OPENID_CODE_'.$className] = json_encode($tokens);
+					}
+					$instance->setTokens( $tokens );
+				}
+				return $instance;
+			}
+			throw new \Exception("Not instance of OpenIDService");
+		} else {
+			throw new \Exception("Invalid service type given.");
+		}
+	}	
 	
 	public function getService($className,$scopeList) {
 		OpenIDLog::debug(__METHOD__,array('serviceClass'=>$className,'scope'=>$scopeList));
