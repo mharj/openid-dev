@@ -52,7 +52,31 @@ class OpenID {
 		header('Location: '.$URL);
 		exit;
 	}
-
+	/**
+	 * Application access token
+	 * @param type $service
+	 * @return type
+	 * @throws \Exception
+	 * @throws OpenIDException
+	 */
+	public function requestServiceToServiceToken($service) {
+		OpenIDLog::debug(__METHOD__,array('service'=>$service,'scope'=>$scopeList));
+		if ( $service == null ) {
+			throw new \Exception("Not service URL found!");
+		}
+		$data = array(
+			'grant_type'	=> 'client_credentials',
+			'resource'		=> $service,
+			'client_id'		=> $this->openIdConfig->getClientId(),
+			'client_secret'	=> $this->openIdConfig->getClientSecret(),
+		);
+		$data = json_decode($this->curlLoader( $this->oid_config->token_endpoint,array('Content-Type: application/x-www-form-urlencoded'),$data));
+		if ( isset($data->error) ) {
+			throw new OpenIDException($data->error,explode("\n",$data->error_description));	
+		}
+		return $data;
+	}
+	
 	public function requestServiceToken($service,$scopeList) {
 		OpenIDLog::debug(__METHOD__,array('service'=>$service,'scope'=>$scopeList));
 		if ( $service == null ) {
@@ -72,6 +96,19 @@ class OpenID {
 			throw new OpenIDException($data->error,explode("\n",$data->error_description));	
 		}
 		return $data;
+	}
+	
+	public function requestServiceTokenRefresh($service,$refresh_token) {
+		OpenIDLog::debug(__METHOD__,func_get_args());
+		if ( $service == null ) {
+			throw new \Exception("Not service URL found!");
+		}
+		$data = array(
+			'grant_type'	=> 'refresh_token',
+			'refresh_token'	=> $refresh_token,
+			'resource'		=> $service,
+			'client_id'		=> $this->openIdConfig->getClientId(),
+		);		
 	}
 	
 	public function getService($className,$scopeList) {
