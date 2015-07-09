@@ -41,6 +41,10 @@ abstract class OpenIDService implements OpenIDServiceInterface {
 		$this->accessToken = $accessToken;	
 	}
 	
+	public function getAccessToken() {
+		return $this->accessToken;	
+	}
+	
 	protected function httpQuery($URL,array $headers,$post,$method=null) {
 		OpenIDLog::debug(get_called_class().'::httpQuery'."('".$URL."')");
 		if ( $this->accessToken == null ) {
