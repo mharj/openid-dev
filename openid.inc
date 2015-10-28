@@ -35,8 +35,7 @@ class OpenID {
 		}
 	}
 	
-	// auth redirect to service
-	public function doAuth($scope) {
+	public function buildAuthUrl($scope) {
 		OpenIDLog::debug(__METHOD__,array('scope'=>$scope));
 		$_SESSION['__OPENID_NONCE'] = OpenIDNonce::makeNonce();
 		$params = array(
@@ -47,9 +46,15 @@ class OpenID {
 			"response_mode"	=> "form_post",
 			"redirect_uri"	=> $this->openIdConfig->getRedirectUri(),
 		);
-		$URL=$this->oid_config->authorization_endpoint."?".http_build_query($params);
+		return $this->oid_config->authorization_endpoint."?".http_build_query($params);
+	}
+	
+	// auth redirect to service
+	public function doAuth($scope) {
+		OpenIDLog::debug(__METHOD__,array('scope'=>$scope));
+		$_SESSION['__OPENID_OK_METHOD']='redirect';
 		$_SESSION['__OPENID_REDIRECT']=(isset($_SERVER['HTTPS'])?'https':'http').'://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
-		header('Location: '.$URL);
+		header('Location: '.$this->buildAuthUrl($scope));
 		exit;
 	}
 	/**
@@ -266,8 +271,19 @@ class OpenID {
 			// store payload to session
 			$_SESSION['__OPENID_PAYLOAD'] = json_encode($token->payload);
 			// redirect to original page
-			header("Location: ". $_SESSION['__OPENID_REDIRECT']."\n");
-			exit;
+			if ( ! isset($_SESSION['__OPENID_OK_METHOD']) ) {
+				$_SESSION['__OPENID_OK_METHOD']='redirect';
+			}
+			switch ($_SESSION['__OPENID_OK_METHOD']) {
+				case "redirect":
+					header("Location: ". $_SESSION['__OPENID_REDIRECT']."\n");
+					exit;
+				case "close":
+					echo "<script>window.opener.location.reload(false);window.close();</script>";
+					exit;
+				default:
+					throw new OpenIDException("Wrong OpenID method");
+			}
 		} catch ( OpenIDException $ex ) {
 			throw $ex;
 		}

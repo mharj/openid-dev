@@ -22,7 +22,7 @@ class OpenIDNonce {
 		return $ret;
 	}
 	
-	public function checkTimestamp($nonce_string,$allowed_skew = self::Auth_OpenID_SKEW,$now = null) {
+	public static function checkTimestamp($nonce_string,$allowed_skew = self::Auth_OpenID_SKEW,$now = null) {
 		$parts = self::splitNonce($nonce_string);
 		if ($now === null) {
 	        $now = time();
